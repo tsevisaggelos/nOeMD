@@ -14,7 +14,7 @@ def parse_mr_file(mr_file_path):
     return atom_pairs
 
 def find_atom_entry(psf_file_path, residue_number, residue_name, atom_type):
-    """Find atom entry line for a given residue and atom type in the psf file with specified format."""
+    """Find atom entry line for a given residue and atom type in the psf file."""
     with open(psf_file_path, 'r') as psf_file:
         for line in psf_file:
             match = re.match(r"^\s*(\d+)\s+\w\s+{}\s+{}\s+{}\s".format(residue_number, residue_name, atom_type), line)
@@ -23,29 +23,22 @@ def find_atom_entry(psf_file_path, residue_number, residue_name, atom_type):
     return f"{residue_number} {residue_name} {atom_type} Not found"
 
 def find_atom_ids_for_pairs(mr_file_path, psf_file_path):
-    """Find formatted atom IDs and entries for each atom pair listed in the .mr file within the .psf file."""
+    """Find formatted atom IDs and entries for each atom pair and return as a structured list."""
     atom_pairs = parse_mr_file(mr_file_path)
-    formatted_output = []
+    table_data = []
 
     for atom1, atom2 in atom_pairs:
-        # Find the atom entries in the psf file for each atom in the pair
         atom1_entry = find_atom_entry(psf_file_path, atom1[0], atom1[1], atom1[2])
         atom2_entry = find_atom_entry(psf_file_path, atom2[0], atom2[1], atom2[2])
         
-        # Extract the atom IDs from each entry if they exist, otherwise use "Not found" message
         atom1_id = atom1_entry.split()[0] if "Not found" not in atom1_entry else "Not found"
         atom2_id = atom2_entry.split()[0] if "Not found" not in atom2_entry else "Not found"
 
-        # Format the output with fixed-width fields for consistent alignment
-        formatted_line = (
-            f"{atom1_id:<8} {atom2_id:<8} *** {atom1_entry:<60} <==> {atom2_entry:<60} ***"
-        )
-        formatted_output.append(formatted_line)
+        table_data.append([atom1_id, atom1_entry, atom2_id, atom2_entry])
+    
+    return table_data
 
-    return formatted_output
-
-
-# Check for command-line arguments or prompt for input
+# Check for command-line arguments
 if len(sys.argv) >= 3:
     file1_path = sys.argv[1]
     file2_path = sys.argv[2]
@@ -67,8 +60,18 @@ else:
     print("Error: Please provide one .mr file and one .psf file.")
     sys.exit(1)
 
-# Run the function and display results
+# Run the function and display results in a properly aligned tabular format
 formatted_atom_pairs = find_atom_ids_for_pairs(mr_file_path, psf_file_path)
-for line in formatted_atom_pairs:
-    print(line)
+headers = ["Atom 1 ID", "Atom 1 Entry", "Atom 2 ID", "Atom 2 Entry"]
 
+# Determine column widths
+col_widths = [max(len(str(row[i])) for row in formatted_atom_pairs + [headers]) for i in range(4)]
+
+# Print table header
+header_fmt = " | ".join(f"{{:<{col_widths[i]}}}" for i in range(4))
+print(header_fmt.format(*headers))
+print("-" * (sum(col_widths) + 9))
+
+# Print table rows
+for row in formatted_atom_pairs:
+    print(header_fmt.format(*row))
