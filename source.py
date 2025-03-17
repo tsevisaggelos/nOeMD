@@ -1,5 +1,7 @@
 import re
 import sys
+import subprocess
+import time
 
 def parse_mr_file(mr_file_path):
     """Extract atom pairs in the form 'residue_number residue_name atom_type' from the .mr file."""
@@ -23,9 +25,12 @@ def find_atom_entry(psf_file_path, residue_number, residue_name, atom_type):
     return f"{residue_number} {residue_name} {atom_type} Not found"
 
 def find_atom_ids_for_pairs(mr_file_path, psf_file_path):
-    """Find formatted atom IDs and entries for each atom pair and return as a structured list."""
+    """Find formatted atom IDs and entries for each atom pair listed in the .mr file within the .psf file."""
     atom_pairs = parse_mr_file(mr_file_path)
-    table_data = []
+    formatted_output = []
+
+    max_left_width = 0
+    atom_entries = []
 
     for atom1, atom2 in atom_pairs:
         atom1_entry = find_atom_entry(psf_file_path, atom1[0], atom1[1], atom1[2])
@@ -34,44 +39,46 @@ def find_atom_ids_for_pairs(mr_file_path, psf_file_path):
         atom1_id = atom1_entry.split()[0] if "Not found" not in atom1_entry else "Not found"
         atom2_id = atom2_entry.split()[0] if "Not found" not in atom2_entry else "Not found"
 
-        table_data.append([atom1_id, atom1_entry, atom2_id, atom2_entry])
-    
-    return table_data
+        left_part = f"{atom1_id:<10}{atom2_id:<10} *** {atom1_entry}"
+        max_left_width = max(max_left_width, len(left_part))
+        atom_entries.append((left_part, atom2_entry))
 
-# Check for command-line arguments
-if len(sys.argv) >= 3:
-    file1_path = sys.argv[1]
-    file2_path = sys.argv[2]
-elif len(sys.argv) == 2:
-    print("Please provide both .mr and .psf files.")
-    sys.exit(1)
-else:
-    file1_path = input("Please enter the path to the .mr or .psf file: ")
-    file2_path = input("Please enter the path to the other file (.mr or .psf): ")
+    # Align "<==>" dynamically
+    for left_part, atom2_entry in atom_entries:
+        spaces_needed = max_left_width - len(left_part) + 5  # Add buffer space
+        formatted_line = f"{left_part}{' ' * spaces_needed}<==>  {atom2_entry} ***"
+        formatted_output.append(formatted_line)
 
-# Determine file types based on extensions
-if file1_path.endswith(".mr") and file2_path.endswith(".psf"):
-    mr_file_path = file1_path
-    psf_file_path = file2_path
-elif file1_path.endswith(".psf") and file2_path.endswith(".mr"):
-    mr_file_path = file2_path
-    psf_file_path = file1_path
-else:
-    print("Error: Please provide one .mr file and one .psf file.")
+    return formatted_output
+
+if len(sys.argv) < 4:
+    print("Usage: python3 script.py <mr_file> <psf_file> <dcd_file>")
     sys.exit(1)
 
-# Run the function and display results in a properly aligned tabular format
+mr_file_path = sys.argv[1]
+psf_file_path = sys.argv[2]
+dcd_file_path = sys.argv[3]
+
 formatted_atom_pairs = find_atom_ids_for_pairs(mr_file_path, psf_file_path)
-headers = ["Atom 1 ID", "Atom 1 Entry", "Atom 2 ID", "Atom 2 Entry"]
 
-# Determine column widths
-col_widths = [max(len(str(row[i])) for row in formatted_atom_pairs + [headers]) for i in range(4)]
+output_filename = "carmaindist"
+with open(output_filename, "w") as output_file:
+    for line in formatted_atom_pairs:
+        output_file.write(line + "\n")
+        print(line)
 
-# Print table header
-header_fmt = " | ".join(f"{{:<{col_widths[i]}}}" for i in range(4))
-print(header_fmt.format(*headers))
-print("-" * (sum(col_widths) + 9))
+# Record and display CARMA start time
+start_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+print(f"\nCARMA is starting at {start_time}, please wait...")
 
-# Print table rows
-for row in formatted_atom_pairs:
-    print(header_fmt.format(*row))
+# Run CARMA command
+try:
+    carma_command = ["carma", "-v", "-atmid", "ALLID", "-dist", output_filename, psf_file_path, dcd_file_path]
+    result = subprocess.run(carma_command, capture_output=True, text=True)
+    
+    print("\nCARMA has finished execution.")
+    print("CARMA Output:\n")
+    print(result.stdout)
+    print(result.stderr)
+except Exception as e:
+    print(f"Error running CARMA: {e}")
