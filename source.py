@@ -4,22 +4,102 @@ import os
 import subprocess
 import time
 
-# Extended bidirectional mapping for Markley nomenclature
+# Bidirectional mapping for Markley nomenclature (Markley et al., 1998)
 markley_map = {
-    "HB1": "HB2", "HB2": "HB3", "HG1": "HG2", "HG2": "HG3",
-    "HD1": "HD2", "HD2": "HD3", "HE1": "HE2", "HE2": "HE3",    
-    "HD11": "HD12", "HD12": "HD13", "HD21": "HD22", "HD22": "HD23",
-    "HE21": "HE22", "HE22": "HE23", "HE31": "HE32", "HE32": "HE33",
-    "QG2" : ["HG21", "HG22" , "HG23" ], 
-    "QG1" : ["HG11" , "HG12" , "HG13"], 
-    "QG"  : ["HG1" , "HG2" , "HG3"],
-    "QD1" : ["HD11" , "HD12" , "HD13"],
-    "QD2" : ["HD21" , "HD22" , "HD23"],
-    "QD": ["HD1", "HD2" , "HD3"], 
-    "QE": ["HE1" , "HE2" , "HE3"],
-    "QE2" : ["HE21" , "HE22" , "HE23"],
-    "QB" : ["HB1" , "HB2", "HB3"], 
-    "QE3" : ["HE31", "HE32",  "HE33"],
+    # Alanine (ALA)
+    "QB": ["HB1", "HB2", "HB3"],  
+
+    # Valine (VAL)
+    "QG1": ["HG11", "HG12", "HG13"],  
+    "QG2": ["HG21", "HG22", "HG23"],  
+
+    # Leucine (LEU)
+    "QD1": ["HD11", "HD12", "HD13"],  
+    "QD2": ["HD21", "HD22", "HD23"],  
+
+    # Isoleucine (ILE)
+    "QG1": ["HG12", "HG13"],  
+    "QG2": ["HG21", "HG22", "HG23"],  
+    "QD1": ["HD11", "HD12", "HD13"],  
+
+    # Threonine (THR)
+    "QG1": ["HG1"],  
+    "HG2": "HG2",  
+    "HG3": "HG3",  
+
+    # Serine (SER)
+    "QB": ["HB2", "HB3"],  
+    "HG": "HG",  
+
+    # Cysteine (CYS)
+    "QB": ["HB2", "HB3"],  
+    "HG": "HG",  
+
+    # Methionine (MET)
+    "QB": ["HB2", "HB3"],  
+    "QG": ["HG2", "HG3"],  
+    "QE": ["HE1", "HE2", "HE3"],  
+
+    # Phenylalanine (PHE)
+    "QB": ["HB2", "HB3"],  
+    "QD": ["HD1", "HD2"],  
+    "QE": ["HE1", "HE2"],  
+    "HZ": "HZ",  
+
+    # Tyrosine (TYR)
+    "QB": ["HB2", "HB3"],  
+    "QD": ["HD1", "HD2"],  
+    "QE": ["HE1", "HE2"],  
+    "HH": "HH",  
+
+    # Tryptophan (TRP)
+    "QB": ["HB2", "HB3"],  
+    "QD1": "HD1",  
+    "QE3": "HE3",  
+    "QZ2": "HZ2",  
+    "QZ3": "HZ3",  
+    "QH2": "HH2",  
+
+    # Glutamine (GLN)
+    "QB": ["HB2", "HB3"],  
+    "QG": ["HG2", "HG3"],  
+    "QE": ["HE21", "HE22"],  
+
+    # Glutamate (GLU)
+    "QB": ["HB2", "HB3"],  
+    "QG": ["HG2", "HG3"],  
+    "QD": ["HD21", "HD22"],  
+
+    # Asparagine (ASN)
+    "QB": ["HB2", "HB3"],  
+    "QD": ["HD21", "HD22"],  
+
+    # Aspartate (ASP)
+    "QB": ["HB2", "HB3"],  
+    "QD": ["HD21", "HD22"],  
+
+    # Lysine (LYS)
+    "QB": ["HB2", "HB3"],  
+    "QG": ["HG2", "HG3"],  
+    "QD": ["HD2", "HD3"],  
+    "QE": ["HE2", "HE3"],  
+    "QZ": ["HZ1", "HZ2", "HZ3"],  
+
+    # Arginine (ARG)
+    "QB": ["HB2", "HB3"],  
+    "QG": ["HG2", "HG3"],  
+    "QD": ["HD2", "HD3"],  
+    "QH": ["HH11", "HH12", "HH21", "HH22"],  
+
+    # Histidine (HIS)
+    "QB": ["HB2", "HB3"],  
+    "QD": ["HD1"],  
+    "QE": ["HE1"],  
+
+    # Proline (PRO)
+    "QB": ["HB2", "HB3"],  
+    "QG": ["HG2", "HG3"],  
+    "QD": ["HD2", "HD3"],  
 }
 
 # Generate reverse mappings (to allow bidirectional lookup)
@@ -31,6 +111,7 @@ for k, v in markley_map.items():
     else:
         reverse_markley_map[v] = k
 markley_map.update(reverse_markley_map)
+
 
 def parse_mr_file(mr_file_path):
     """Extract atom pairs in the form 'residue_number residue_name atom_type' from the .mr file."""
@@ -49,6 +130,7 @@ def apply_markley_nomenclature(atom_type):
     return markley_map.get(atom_type, atom_type)
     
 def find_atom_entry(psf_file_path, residue_number, residue_name, atom_type):
+
     """Find atom entry line for a given residue and atom type in the psf file.
     If not found with original name, try mapped names but return original format."""
     original_atom_type = atom_type
@@ -136,6 +218,7 @@ def identify_files(args):
     return mr_file, psf_file, dcd_file
 
 def main():
+
     if len(sys.argv) < 3:
         print("Usage: python3 script.py <mr_file> <psf_file> [<dcd_file>]")
         print("Files can be provided in any order.")
